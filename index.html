@@ -2,73 +2,201 @@
 <html lang="cs">
 <head>
     <meta charset="UTF-8">
-    <title>Stav Studny - Live</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Moje Studna - Live Dashboard</title>
     <script src="https://ajax.googleapis.com/ajax/libs/jquery/3.5.1/jquery.min.js"></script>
     <script src="https://code.highcharts.com/highcharts.js"></script>
     <style>
-        body { background: #f0f2f5; font-family: 'Segoe UI', sans-serif; display: flex; justify-content: center; padding: 20px; }
-        .card { background: white; border-radius: 15px; box-shadow: 0 10px 30px rgba(0,0,0,0.1); padding: 30px; width: 100%; max-width: 600px; text-align: center; }
-        .well-flex { display: flex; align-items: center; justify-content: space-around; margin-bottom: 30px; }
-        #well { width: 100px; height: 200px; background: linear-gradient(90deg, #666, #999, #666); position: relative; border-radius: 0 0 20px 20px; border: 5px solid #333; overflow: hidden; }
-        #water { position: absolute; bottom: 0; width: 100%; background: #3498db; transition: height 2s ease-in-out; }
-        .data h1 { font-size: 48px; margin: 0; color: #2c3e50; }
-        .range-selector { margin: 20px 0; display: flex; justify-content: center; gap: 5px; }
-        button { padding: 8px 12px; border: none; background: #ddd; border-radius: 5px; cursor: pointer; font-weight: bold; }
-        button.active { background: #3498db; color: white; }
+        /* ZÁKLADNÍ NASTAVENÍ PRO CELOU OBRAZOVKU */
+        body { 
+            margin: 0; 
+            padding: 0; 
+            background: #f4f7f9; 
+            font-family: 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
+            display: flex;
+            justify-content: center;
+            min-height: 100vh;
+        }
+
+        /* HLAVNÍ KONTEJNER (KARTA) */
+        .dashboard-card { 
+            background: white; 
+            width: 100%; 
+            max-width: 1000px; /* Max šířka na PC */
+            margin: 0; 
+            box-shadow: 0 4px 15px rgba(0,0,0,0.1);
+            display: flex;
+            flex-direction: column;
+            padding: 15px;
+            box-sizing: border-box;
+        }
+
+        /* HORNÍ SEKCE S AKTUÁLNÍMI ÚDAJI */
+        .header-section {
+            display: flex;
+            flex-direction: row;
+            align-items: center;
+            justify-content: space-around;
+            padding: 10px 0;
+            border-bottom: 2px solid #f0f0f0;
+            margin-bottom: 15px;
+        }
+
+        /* STUDNA - GRAFIKA */
+        #well-viz {
+            width: 70px;
+            height: 130px;
+            background: linear-gradient(90deg, #666, #999, #666);
+            position: relative;
+            border: 4px solid #333;
+            border-radius: 0 0 15px 15px;
+            overflow: hidden;
+            box-shadow: inset 0 -5px 15px rgba(0,0,0,0.3);
+        }
+        #water-level {
+            position: absolute;
+            bottom: 0;
+            width: 100%;
+            background: linear-gradient(to bottom, #3498db, #2980b9);
+            transition: height 2s ease-in-out;
+        }
+
+        /* TEXTOVÉ ÚDAJE */
+        .current-stats h2 { margin: 0; font-size: 14px; color: #888; text-transform: uppercase; }
+        .current-stats h1 { margin: 5px 0; font-size: 40px; color: #2c3e50; }
+        .current-stats span { font-size: 12px; color: #aaa; }
+
+        /* TLAČÍTKA OBDOBÍ */
+        .controls {
+            display: flex;
+            justify-content: center;
+            gap: 5px;
+            margin-bottom: 15px;
+        }
+        button {
+            flex: 1; /* Tlačítka se roztáhnou rovnoměrně */
+            max-width: 100px;
+            padding: 10px 5px;
+            border: none;
+            background: #eef2f5;
+            color: #555;
+            border-radius: 8px;
+            cursor: pointer;
+            font-weight: bold;
+            font-size: 11px;
+            transition: 0.2s;
+        }
+        button.active { background: #3498db; color: white; box-shadow: 0 3px 8px rgba(52,152,219,0.3); }
+
+        /* GRAF - ROZTAŽENÍ NA ZBYTEK OBRAZOVKY */
+        #chart-container {
+            flex-grow: 1; /* Graf vyplní zbývající místo */
+            min-height: 300px;
+            width: 100%;
+        }
+
+        /* ÚPRAVY PRO MOBILY (displej pod 600px) */
+        @media (max-width: 600px) {
+            .dashboard-card { padding: 10px; height: 100vh; }
+            .current-stats h1 { font-size: 32px; }
+            #well-viz { width: 50px; height: 100px; }
+            button { font-size: 10px; padding: 12px 2px; }
+        }
     </style>
 </head>
 <body>
-    <div class="card">
-        <h2>Monitor Hladiny Studny</h2>
-        <div class="well-flex">
-            <div id="well"><div id="water"></div></div>
-            <div class="data">
-                <p>Aktuální stav</p>
-                <h1 id="val">--.-- m</h1>
-                <small id="time">Načítám...</small>
-            </div>
+
+<div class="dashboard-card">
+    <div class="header-section">
+        <div id="well-viz">
+            <div id="water-level"></div>
         </div>
-        <div class="range-selector">
-            <button class="btn active" onclick="load(1, this)">1D</button>
-            <button class="btn" onclick="load(7, this)">7D</button>
-            <button class="btn" onclick="load(30, this)">30D</button>
-            <button class="btn" onclick="load(365, this)">Rok</button>
+        <div class="current-stats">
+            <h2>Aktuální hladina</h2>
+            <h1 id="last-val">--.-- m</h1>
+            <span id="update-time">Načítám...</span>
         </div>
-        <div id="chart" style="height: 300px;"></div>
     </div>
 
-    <script>
-        const chanID = 3226969;
-        const readKey = 'G94OWZPH29BCZUOG';
-        const maxDepth = 18.0;
-        let chart;
+    <div class="controls">
+        <button class="btn active" onclick="updateView(1, 'raw', this)">1 DEN</button>
+        <button class="btn" onclick="updateView(7, 'raw', this)">TÝDEN</button>
+        <button class="btn" onclick="updateView(31, 'raw', this)">MĚSÍC</button>
+        <button class="btn" onclick="updateView(365, 'daily', this)">ROK</button>
+        <button class="btn" onclick="updateView(1825, 'daily', this)">MAX</button>
+    </div>
 
-        function initChart() {
-            chart = new Highcharts.Chart({
-                chart: { renderTo: 'chart', type: 'areaspline' },
+    <div id="chart-container"></div>
+</div>
+
+<script>
+    const chanID = 3226969;
+    const readKey = 'G94OWZPH29BCZUOG';
+    const maxDepth = 18.0; 
+    let chart;
+
+    function initChart() {
+        chart = new Highcharts.Chart({
+            chart: { renderTo: 'chart-container', type: 'areaspline', zoomType: 'x', spacingBottom: 15 },
+            title: { text: null },
+            xAxis: { type: 'datetime', crosshair: true },
+            yAxis: { 
                 title: { text: null },
-                xAxis: { type: 'datetime' },
-                yAxis: { title: { text: 'Metry' }, min: 0, max: maxDepth },
-                series: [{ name: 'Voda', data: [], color: '#3498db' }],
-                credits: { enabled: false }
-            });
-        }
-
-        function load(days, btn) {
-            $('.btn').removeClass('active'); $(btn).addClass('active');
-            $.getJSON(`https://api.thingspeak.com/channels/${chanID}/fields/1.json?api_key=${readKey}&days=${days}`, function(data) {
-                const points = data.feeds.map(f => [new Date(f.created_at).getTime(), parseFloat(f.field1)]).filter(p => !isNaN(p[1]));
-                chart.series[0].setData(points);
-                if(points.length > 0) {
-                    const last = points[points.length-1];
-                    $('#val').text(last[1].toFixed(2) + ' m');
-                    $('#time').text(new Date(last[0]).toLocaleString());
-                    $('#water').css('height', (last[1]/maxDepth*100) + '%');
+                minPadding: 0.1, maxPadding: 0.1,
+                startOnTick: false, endOnTick: false,
+                labels: { format: '{value:.2f} m' }
+            },
+            legend: { enabled: false },
+            plotOptions: {
+                areaspline: {
+                    fillColor: {
+                        linearGradient: { x1: 0, y1: 0, x2: 0, y2: 1 },
+                        stops: [[0, '#3498db'], [1, 'rgba(52,152,219,0)']]
+                    },
+                    marker: { enabled: false },
+                    lineWidth: 3,
+                    threshold: null
                 }
-            });
-        }
+            },
+            series: [{ name: 'Hladina', data: [], color: '#2980b9' }],
+            credits: { enabled: false }
+        });
+    }
 
-        $(document).ready(() => { initChart(); load(1, $('.btn.active')); });
-    </script>
+    function updateView(days, mode, btn) {
+        $('.btn').removeClass('active');
+        $(btn).addClass('active');
+
+        // ThingSpeak API limit 8000 bodů pro jeden dotaz.
+        let url = `https://api.thingspeak.com/channels/${chanID}/fields/1.json?api_key=${readKey}&results=8000`;
+        if (days) url += `&days=${days}`;
+        // Pro delší období využíváme denní průměry kvůli rychlosti načítání.
+        if (mode === 'daily') url += `&average=daily`;
+
+        $.getJSON(url, function(data) {
+            let points = [];
+            $.each(data.feeds, function(i, f) {
+                let v = parseFloat(f.field1);
+                if (!isNaN(v)) points.push([new Date(f.created_at).getTime(), v]);
+            });
+
+            chart.series[0].setData(points);
+
+            if (points.length > 0) {
+                let last = points[points.length - 1];
+                $('#last-val').text(last[1].toFixed(2) + ' m');
+                $('#update-time').text('Aktualizováno: ' + new Date(last[0]).toLocaleString('cs-CZ'));
+                let p = (last[1] / maxDepth) * 100;
+                $('#water-level').css('height', Math.min(100, Math.max(0, p)) + '%');
+            }
+        });
+    }
+
+    $(document).ready(function() {
+        initChart();
+        updateView(1, 'raw', $('.btn.active'));
+    });
+</script>
+
 </body>
 </html>
