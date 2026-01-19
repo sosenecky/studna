@@ -1,0 +1,74 @@
+<!DOCTYPE html>
+<html lang="cs">
+<head>
+    <meta charset="UTF-8">
+    <title>Stav Studny - Live</title>
+    <script src="https://ajax.googleapis.com/ajax/libs/jquery/3.5.1/jquery.min.js"></script>
+    <script src="https://code.highcharts.com/highcharts.js"></script>
+    <style>
+        body { background: #f0f2f5; font-family: 'Segoe UI', sans-serif; display: flex; justify-content: center; padding: 20px; }
+        .card { background: white; border-radius: 15px; box-shadow: 0 10px 30px rgba(0,0,0,0.1); padding: 30px; width: 100%; max-width: 600px; text-align: center; }
+        .well-flex { display: flex; align-items: center; justify-content: space-around; margin-bottom: 30px; }
+        #well { width: 100px; height: 200px; background: linear-gradient(90deg, #666, #999, #666); position: relative; border-radius: 0 0 20px 20px; border: 5px solid #333; overflow: hidden; }
+        #water { position: absolute; bottom: 0; width: 100%; background: #3498db; transition: height 2s ease-in-out; }
+        .data h1 { font-size: 48px; margin: 0; color: #2c3e50; }
+        .range-selector { margin: 20px 0; display: flex; justify-content: center; gap: 5px; }
+        button { padding: 8px 12px; border: none; background: #ddd; border-radius: 5px; cursor: pointer; font-weight: bold; }
+        button.active { background: #3498db; color: white; }
+    </style>
+</head>
+<body>
+    <div class="card">
+        <h2>Monitor Hladiny Studny</h2>
+        <div class="well-flex">
+            <div id="well"><div id="water"></div></div>
+            <div class="data">
+                <p>Aktuální stav</p>
+                <h1 id="val">--.-- m</h1>
+                <small id="time">Načítám...</small>
+            </div>
+        </div>
+        <div class="range-selector">
+            <button class="btn active" onclick="load(1, this)">1D</button>
+            <button class="btn" onclick="load(7, this)">7D</button>
+            <button class="btn" onclick="load(30, this)">30D</button>
+            <button class="btn" onclick="load(365, this)">Rok</button>
+        </div>
+        <div id="chart" style="height: 300px;"></div>
+    </div>
+
+    <script>
+        const chanID = 3226969;
+        const readKey = 'G94OWZPH29BCZUOG';
+        const maxDepth = 18.0;
+        let chart;
+
+        function initChart() {
+            chart = new Highcharts.Chart({
+                chart: { renderTo: 'chart', type: 'areaspline' },
+                title: { text: null },
+                xAxis: { type: 'datetime' },
+                yAxis: { title: { text: 'Metry' }, min: 0, max: maxDepth },
+                series: [{ name: 'Voda', data: [], color: '#3498db' }],
+                credits: { enabled: false }
+            });
+        }
+
+        function load(days, btn) {
+            $('.btn').removeClass('active'); $(btn).addClass('active');
+            $.getJSON(`https://api.thingspeak.com/channels/${chanID}/fields/1.json?api_key=${readKey}&days=${days}`, function(data) {
+                const points = data.feeds.map(f => [new Date(f.created_at).getTime(), parseFloat(f.field1)]).filter(p => !isNaN(p[1]));
+                chart.series[0].setData(points);
+                if(points.length > 0) {
+                    const last = points[points.length-1];
+                    $('#val').text(last[1].toFixed(2) + ' m');
+                    $('#time').text(new Date(last[0]).toLocaleString());
+                    $('#water').css('height', (last[1]/maxDepth*100) + '%');
+                }
+            });
+        }
+
+        $(document).ready(() => { initChart(); load(1, $('.btn.active')); });
+    </script>
+</body>
+</html>
