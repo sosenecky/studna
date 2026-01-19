@@ -1,3 +1,79 @@
+<!DOCTYPE html>
+<html lang="cs">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Moje Studna - Live Dashboard</title>
+    <script src="https://ajax.googleapis.com/ajax/libs/jquery/3.5.1/jquery.min.js"></script>
+    <script src="https://code.highcharts.com/highcharts.js"></script>
+    <style>
+        body { margin: 0; padding: 0; background: #f4f7f9; font-family: 'Segoe UI', Roboto, sans-serif; display: flex; justify-content: center; min-height: 100vh; }
+        .dashboard-card { background: white; width: 100%; max-width: 1000px; margin: 0; box-shadow: 0 4px 15px rgba(0,0,0,0.1); display: flex; flex-direction: column; padding: 15px; box-sizing: border-box; }
+        
+        /* VAROVÁNÍ PŘI VÝPADKU DAT */
+        #offline-alert {
+            display: none; 
+            background: #ff7675;
+            color: white;
+            text-align: center;
+            padding: 15px;
+            border-radius: 10px;
+            margin-bottom: 15px;
+            font-weight: bold;
+            animation: pulse 2s infinite;
+        }
+        @keyframes pulse { 0% { opacity: 1; } 50% { opacity: 0.7; } 100% { opacity: 1; } }
+
+        .header-section { display: flex; align-items: center; justify-content: space-around; padding: 10px 0; border-bottom: 2px solid #f0f0f0; margin-bottom: 15px; }
+        
+        /* GRAFIKA STUDNY */
+        #well-viz { width: 60px; height: 120px; background: linear-gradient(90deg, #666, #999, #666); position: relative; border: 4px solid #333; border-radius: 0 0 15px 15px; overflow: hidden; box-shadow: inset 0 -5px 15px rgba(0,0,0,0.3); }
+        #water-level { position: absolute; bottom: 0; width: 100%; background: linear-gradient(to bottom, #3498db, #2980b9); transition: height 2s ease-in-out; }
+        
+        .current-stats h2 { margin: 0; font-size: 14px; color: #888; text-transform: uppercase; }
+        .current-stats h1 { margin: 5px 0; font-size: 38px; color: #2c3e50; }
+        
+        /* OVLÁDÁNÍ */
+        .controls { display: flex; justify-content: center; gap: 5px; margin-bottom: 15px; }
+        button { flex: 1; max-width: 100px; padding: 12px 5px; border: none; background: #eef2f5; color: #555; border-radius: 8px; cursor: pointer; font-weight: bold; font-size: 11px; }
+        button.active { background: #3498db; color: white; }
+        
+        #chart-container { flex-grow: 1; min-height: 350px; width: 100%; }
+
+        @media (max-width: 600px) {
+            .current-stats h1 { font-size: 30px; }
+            #well-viz { width: 50px; height: 100px; }
+        }
+    </style>
+</head>
+<body>
+
+<div class="dashboard-card">
+    <div id="offline-alert">
+        ⚠️ ZAŘÍZENÍ JE OFFLINE / VYBITÁ BATERIE<br>
+        <small>Data nebyla přijata déle než 24 hodin.</small>
+    </div>
+
+    <div class="header-section">
+        <div id="well-viz"><div id="water-level"></div></div>
+        <div class="current-stats">
+            <h2>Aktuální hladina</h2>
+            <h1 id="last-val">--.-- m</h1>
+            <span id="update-time" style="font-size: 12px; color: #aaa;">Načítám...</span>
+        </div>
+    </div>
+
+    <div class="controls">
+        <button class="btn active" onclick="updateView(1, 'raw', this)">1 DEN</button>
+        <button class="btn" onclick="updateView(7, 'raw', this)">TÝDEN</button>
+        <button class="btn" onclick="updateView(31, 'raw', this)">MĚSÍC</button>
+        <button class="btn" onclick="updateView(365, 'daily', this)">ROK</button>
+        <button class="btn" onclick="updateView(1825, 'daily', this)">MAX</button>
+    </div>
+
+    <div id="chart-container"></div>
+</div>
+
 <script>
     const chanID = 3226969;
     const readKey = 'G94OWZPH29BCZUOG';
@@ -9,9 +85,23 @@
             chart: { renderTo: 'chart-container', type: 'areaspline', zoomType: 'x' },
             title: { text: null },
             xAxis: { type: 'datetime', crosshair: true },
-            yAxis: { title: { text: null }, minPadding: 0.1, maxPadding: 0.1, startOnTick: false, endOnTick: false, labels: { format: '{value:.2f} m' } },
+            yAxis: { 
+                title: { text: null }, 
+                minPadding: 0.1, 
+                maxPadding: 0.1, 
+                startOnTick: false, 
+                endOnTick: false, 
+                labels: { format: '{value:.2f} m' } 
+            },
             legend: { enabled: false },
-            plotOptions: { areaspline: { fillColor: { linearGradient: { x1: 0, y1: 0, x2: 0, y2: 1 }, stops: [[0, '#3498db'], [1, 'rgba(52,152,219,0)']] }, marker: { enabled: false }, lineWidth: 3, threshold: null } },
+            plotOptions: { 
+                areaspline: { 
+                    fillColor: { linearGradient: { x1: 0, y1: 0, x2: 0, y2: 1 }, stops: [[0, '#3498db'], [1, 'rgba(52,152,219,0)']] }, 
+                    marker: { enabled: false }, 
+                    lineWidth: 3, 
+                    threshold: null 
+                } 
+            },
             series: [{ name: 'Hladina', data: [], color: '#2980b9' }],
             credits: { enabled: false }
         });
@@ -41,12 +131,11 @@
                 let lastTime = last[0];
                 let now = new Date().getTime();
                 
-                // LOGIKA PRO AUTOMATICKÉ ODSTRANĚNÍ ALARMU:
-                // Pokud je rozdíl mezi "teď" a "poslední data" menší než 24h, alarm se skryje.
+                // Kontrola 24h (86 400 000 ms)
                 if (now - lastTime > 86400000) {
-                    $('#offline-alert').fadeIn(); // Alarm se ukáže
+                    $('#offline-alert').fadeIn();
                 } else {
-                    $('#offline-alert').fadeOut(); // Alarm sám zmizí, jakmile přijdou nová data
+                    $('#offline-alert').fadeOut();
                 }
 
                 $('#last-val').text(last[1].toFixed(2) + ' m');
@@ -61,20 +150,21 @@
         initChart();
         updateView(1, 'raw', $('.btn.active'));
 
-        // AUTOMATICKÁ AKTUALIZACE KAŽDÝCH 5 MINUT
-        // To zajistí, že alarm zmizí sám od sebe bez klikání na web
+        // Automatická aktualizace každých 5 minut
         setInterval(function() {
-            // Zjistíme, jaké období je zrovna vybrané, a to aktualizujeme
             let activeBtn = $('.btn.active');
-            if (activeBtn.text().includes('ROK')) {
-                updateView(365, 'daily');
-            } else if (activeBtn.text().includes('MĚSÍC')) {
-                updateView(31, 'raw');
-            } else if (activeBtn.text().includes('TÝDEN')) {
-                updateView(7, 'raw');
-            } else {
-                updateView(1, 'raw');
-            }
-        }, 300000); // 300 000 ms = 5 minut
+            let days = 1;
+            let mode = 'raw';
+            
+            if (activeBtn.text().includes('ROK')) { days = 365; mode = 'daily'; }
+            else if (activeBtn.text().includes('MAX')) { days = 1825; mode = 'daily'; }
+            else if (activeBtn.text().includes('MĚSÍC')) { days = 31; mode = 'raw'; }
+            else if (activeBtn.text().includes('TÝDEN')) { days = 7; mode = 'raw'; }
+
+            updateView(days, mode);
+        }, 300000); 
     });
 </script>
+
+</body>
+</html>
