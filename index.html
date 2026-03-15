@@ -3,200 +3,195 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>Moje Studna | Smart Monitoring</title>
+    <title>Studna Live Dashboard</title>
     <script src="https://ajax.googleapis.com/ajax/libs/jquery/3.5.1/jquery.min.js"></script>
     <script src="https://code.highcharts.com/highcharts.js"></script>
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;600;700&display=swap" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;600;800&display=swap" rel="stylesheet">
     <style>
         :root {
-            --primary: #3498db;
-            --secondary: #2980b9;
-            --bg: #f0f2f5;
-            --card-bg: #ffffff;
-            --text-main: #2c3e50;
-            --text-dim: #7f8c8d;
-            --danger: #e74c3c;
-            --success: #27ae60;
+            --bg: #f8fafc;
+            --card: #ffffff;
+            --primary: #0ea5e9;
+            --text-dark: #0f172a;
+            --text-light: #64748b;
+            --danger: #ef4444;
+            --success: #22c55e;
+            --radius: 24px;
         }
 
         body { 
-            margin: 0; padding: 20px; 
+            margin: 0; padding: 0; 
             background: var(--bg); 
-            font-family: 'Inter', sans-serif; 
-            display: flex; justify-content: center; 
-            color: var(--text-main);
+            font-family: 'Plus Jakarta Sans', sans-serif; 
+            color: var(--text-dark);
+            display: flex; justify-content: center;
+            min-height: 100vh;
         }
 
-        .dashboard-card { 
-            background: var(--card-bg); 
-            width: 100%; max-width: 900px; 
-            border-radius: 24px;
-            box-shadow: 0 10px 30px rgba(0,0,0,0.08); 
-            padding: 30px; 
-            box-sizing: border-box; 
+        .adaptive-container {
+            width: 100%;
+            max-width: 1200px;
+            padding: 20px;
+            display: grid;
+            gap: 20px;
+            /* Default: Single column for mobile */
+            grid-template-columns: 1fr;
+            align-content: start;
         }
 
         /* OFFLINE ALERT */
         #offline-alert {
-            display: none; 
+            display: none;
+            grid-column: 1 / -1;
             background: var(--danger);
             color: white;
+            padding: 14px;
+            border-radius: var(--radius);
             text-align: center;
-            padding: 15px;
-            border-radius: 12px;
-            margin-bottom: 20px;
-            font-weight: 600;
-            box-shadow: 0 4px 12px rgba(231, 76, 60, 0.3);
+            font-weight: 700;
+            animation: pulse 2s infinite;
         }
 
-        /* HEADER & VISUALIZATION */
-        .main-grid {
+        /* MODULES (CARDS) */
+        .card {
+            background: var(--card);
+            padding: 24px;
+            border-radius: var(--radius);
+            box-shadow: 0 4px 20px rgba(0,0,0,0.04);
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+        }
+
+        /* TOP STATS LAYOUT */
+        .status-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            gap: 20px;
+        }
+
+        .status-main h2 { margin: 0; font-size: 0.8rem; text-transform: uppercase; color: var(--text-light); }
+        .status-main h1 { margin: 8px 0; font-size: clamp(2.5rem, 5vw, 3.5rem); font-weight: 800; }
+
+        /* WELL VIZ - Fluid Height */
+        .well-viz-wrapper {
+            position: relative;
+            width: 80px;
+            height: 120px;
+            background: #e2e8f0;
+            border-radius: 12px 12px 24px 24px;
+            border: 5px solid #334155;
+            overflow: hidden;
+            flex-shrink: 0;
+        }
+
+        #water-level {
+            position: absolute;
+            bottom: 0; width: 100%;
+            background: linear-gradient(180deg, #38bdf8 0%, #0ea5e9 100%);
+            transition: height 1.5s ease-out;
+        }
+
+        /* GRID FOR MINI STATS */
+        .grid-stats {
             display: grid;
-            grid-template-columns: 150px 1fr;
-            gap: 30px;
-            margin-bottom: 30px;
+            grid-template-columns: repeat(2, 1fr);
+            gap: 12px;
         }
 
-        .well-container {
-            display: flex;
-            flex-direction: column;
-            align-items: center;
-            gap: 10px;
-        }
-
-        #well-viz { 
-            width: 80px; 
-            height: 160px; 
-            background: #eee; 
-            position: relative; 
-            border: 6px solid #444; 
-            border-radius: 0 0 20px 20px; 
-            overflow: hidden; 
-            box-shadow: inset 5px 0 10px rgba(0,0,0,0.1);
-        }
-
-        #water-level { 
-            position: absolute; 
-            bottom: 0; 
-            width: 100%; 
-            background: linear-gradient(180deg, #4facfe 0%, #00f2fe 100%);
-            transition: height 1.5s cubic-bezier(0.4, 0, 0.2, 1);
-            display: flex;
-            align-items: center;
-            justify-content: center;
-        }
-
-        /* STATS */
-        .stats-container {
-            display: flex;
-            flex-direction: column;
-            justify-content: center;
-        }
-
-        .current-stats h2 { margin: 0; font-size: 14px; color: var(--text-dim); text-transform: uppercase; letter-spacing: 1px; }
-        .current-stats h1 { margin: 5px 0; font-size: 48px; font-weight: 700; color: var(--text-main); }
-        
-        .badge {
-            display: inline-block;
-            padding: 4px 12px;
+        .stat-item {
+            background: #f1f5f9;
+            padding: 16px;
             border-radius: 20px;
-            font-size: 12px;
-            font-weight: 600;
-            background: #e8f4fd;
-            color: var(--primary);
-            margin-top: 5px;
-        }
-
-        .mini-stats {
-            display: grid;
-            grid-template-columns: repeat(3, 1fr);
-            gap: 15px;
-            margin-top: 20px;
-        }
-
-        .stat-box {
-            background: #f8fafc;
-            padding: 12px;
-            border-radius: 12px;
             text-align: center;
         }
 
-        .stat-box label { display: block; font-size: 11px; color: var(--text-dim); text-transform: uppercase; }
-        .stat-box span { font-weight: 700; font-size: 16px; }
+        .stat-item label { display: block; font-size: 11px; color: var(--text-light); text-transform: uppercase; }
+        .stat-item span { font-weight: 700; font-size: 1.2rem; }
 
-        /* CONTROLS */
-        .controls { 
-            display: flex; 
-            background: #f1f3f5;
-            padding: 5px;
-            border-radius: 14px;
-            gap: 5px; 
-            margin-bottom: 25px; 
-        }
-        
-        button.btn { 
-            flex: 1; 
-            padding: 10px; 
-            border: none; 
-            background: transparent; 
-            color: var(--text-dim); 
-            border-radius: 10px; 
-            cursor: pointer; 
-            font-weight: 600; 
-            font-size: 12px;
-            transition: all 0.2s;
-        }
-        
-        button.btn.active { 
-            background: white; 
-            color: var(--primary); 
-            box-shadow: 0 4px 10px rgba(0,0,0,0.05);
+        /* CONTROLS (App-like Tabs) */
+        .controls {
+            display: flex;
+            background: #e2e8f0;
+            padding: 4px;
+            border-radius: 16px;
+            gap: 4px;
         }
 
-        #chart-container { height: 350px; width: 100%; }
-
-        @media (max-width: 600px) {
-            .main-grid { grid-template-columns: 1fr; justify-items: center; text-align: center; }
-            .mini-stats { grid-template-columns: 1fr 1fr; }
-            .dashboard-card { padding: 20px; }
+        .btn {
+            flex: 1; border: none; background: none; padding: 12px 5px;
+            font-size: 11px; font-weight: 700; color: var(--text-light);
+            border-radius: 12px; cursor: pointer; transition: 0.2s;
         }
+
+        .btn.active { background: var(--card); color: var(--primary); box-shadow: 0 2px 8px rgba(0,0,0,0.1); }
+
+        /* --- ADAPTIVE BREAKPOINTS --- */
+
+        /* TABLET VIEW (Wide enough for 2 columns) */
+        @media (min-width: 768px) {
+            .adaptive-container {
+                grid-template-columns: 1fr 1fr;
+                padding: 40px;
+            }
+            .chart-card { grid-column: 1 / -1; } /* Chart spans full width */
+        }
+
+        /* DESKTOP VIEW (3 Columns or Sidebars) */
+        @media (min-width: 1024px) {
+            .adaptive-container {
+                grid-template-columns: 350px 1fr;
+                grid-template-rows: auto auto auto;
+            }
+            .chart-card { grid-column: 2; grid-row: 1 / 4; height: 100%; }
+            .well-viz-wrapper { height: 180px; width: 100px; } /* Larger well on desktop */
+        }
+
+        /* ASPECT RATIO TWEAK: For very short/wide screens (Landscape Phones) */
+        @media (max-height: 500px) and (orientation: landscape) {
+            .adaptive-container { grid-template-columns: 1fr 1fr; }
+            .well-viz-wrapper { height: 80px; }
+        }
+
+        @keyframes pulse { 0% { opacity: 1; } 50% { opacity: 0.6; } 100% { opacity: 1; } }
     </style>
 </head>
 <body>
 
-<div class="dashboard-card">
+<div class="adaptive-container">
     <div id="offline-alert">⚠️ ZAŘÍZENÍ JE OFFLINE</div>
 
-    <div class="main-grid">
-        <div class="well-container">
-            <div id="well-viz"><div id="water-level"></div></div>
-            <span id="percent-val" style="font-weight: bold; color: var(--primary);">0%</span>
-        </div>
-
-        <div class="stats-container">
-            <div class="current-stats">
-                <h2>Aktuální stav hladiny</h2>
+    <div class="card">
+        <div class="status-header">
+            <div class="status-main">
+                <h2>Aktuální stav</h2>
                 <h1 id="last-val">--.-- m</h1>
-                <div id="update-time" style="font-size: 13px; color: var(--text-dim);">Zjišťuji stav...</div>
-                <div id="trend-badge" class="badge">Stabilní</div>
+                <div id="trend-badge" style="font-weight: 800; font-size: 12px;">Zjišťuji...</div>
             </div>
-
-            <div class="mini-stats">
-                <div class="stat-box"><label>Minimum</label><span id="min-val">--</span></div>
-                <div class="stat-box"><label>Maximum</label><span id="max-val">--</span></div>
-                <div class="stat-box"><label>Kapacita</label><span>18m</span></div>
+            <div class="well-viz-wrapper">
+                <div id="water-level"></div>
             </div>
         </div>
     </div>
 
-    <div class="controls">
-        <button class="btn active" onclick="updateView(1, 'raw', this)">1 DEN</button>
-        <button class="btn" onclick="updateView(7, 'raw', this)">TÝDEN</button>
-        <button class="btn" onclick="updateView(31, 'raw', this)">MĚSÍC</button>
-        <button class="btn" onclick="updateView(365, 'daily', this)">ROK</button>
+    <div class="card" style="gap: 15px;">
+        <div class="grid-stats">
+            <div class="stat-item"><label>Min</label><span id="min-val">--</span></div>
+            <div class="stat-item"><label>Max</label><span id="max-val">--</span></div>
+        </div>
+        <div class="controls">
+            <button class="btn active" onclick="updateView(1, 'raw', this)">1D</button>
+            <button class="btn" onclick="updateView(7, 'raw', this)">7D</button>
+            <button class="btn" onclick="updateView(31, 'raw', this)">31D</button>
+            <button class="btn" onclick="updateView(365, 'daily', this)">ROK</button>
+        </div>
     </div>
 
-    <div id="chart-container"></div>
+    <div class="card chart-card">
+        <div id="chart-container" style="flex-grow: 1; min-height: 300px;"></div>
+        <div id="update-time" style="text-align: center; font-size: 11px; color: var(--text-light); margin-top: 15px;">Aktualizace...</div>
+    </div>
 </div>
 
 <script>
@@ -207,44 +202,30 @@
 
     function initChart() {
         chart = Highcharts.chart('chart-container', {
-            chart: { type: 'areaspline', backgroundColor: 'transparent', marginTop: 30 },
+            chart: { type: 'areaspline', backgroundColor: 'transparent' },
             title: { text: null },
-            xAxis: { type: 'datetime', gridLineWidth: 0, minorGridLineWidth: 0 },
-            yAxis: { 
-                title: { text: null }, 
-                gridLineColor: '#f0f0f0',
-                labels: { format: '{value} m' }
-            },
-            tooltip: { shared: true, borderRadius: 10 },
+            xAxis: { type: 'datetime', crosshair: true },
+            yAxis: { title: { text: null }, gridLineColor: '#f1f5f9' },
             legend: { enabled: false },
-            plotOptions: { 
-                areaspline: { 
-                    fillColor: { 
-                        linearGradient: { x1: 0, y1: 0, x2: 0, y2: 1 }, 
-                        stops: [[0, 'rgba(52,152,219,0.3)'], [1, 'rgba(52,152,219,0)']] 
-                    }, 
-                    lineWidth: 3, color: '#3498db',
-                    marker: { enabled: false, states: { hover: { enabled: true } } }
-                } 
+            credits: { enabled: false },
+            plotOptions: {
+                areaspline: {
+                    fillColor: { linearGradient: { x1: 0, y1: 0, x2: 0, y2: 1 }, stops: [[0, 'rgba(14, 165, 233, 0.2)'], [1, 'rgba(14, 165, 233, 0)']] },
+                    color: '#0ea5e9', lineWidth: 3, marker: { enabled: false }
+                }
             },
-            series: [{ name: 'Hladina', data: [] }],
-            credits: { enabled: false }
+            series: [{ name: 'Hladina', data: [] }]
         });
     }
 
     function updateView(days, mode, btn) {
-        if (btn) {
-            $('.btn').removeClass('active');
-            $(btn).addClass('active');
-        }
+        if (btn) { $('.btn').removeClass('active'); $(btn).addClass('active'); }
 
-        let url = `https://api.thingspeak.com/channels/${chanID}/fields/1.json?api_key=${readKey}`;
-        if (days) url += `&days=${days}`;
+        let url = `https://api.thingspeak.com/channels/${chanID}/fields/1.json?api_key=${readKey}&days=${days}`;
         if (mode === 'daily') url += `&average=daily`;
 
         $.getJSON(url, function(data) {
-            let points = [];
-            let values = [];
+            let points = [], values = [];
             $.each(data.feeds, function(i, f) {
                 let v = parseFloat(f.field1);
                 if (!isNaN(v)) {
@@ -257,33 +238,22 @@
 
             if (points.length > 0) {
                 const last = values[values.length - 1];
-                const prev = values[values.length - 2] || last;
                 const min = Math.min(...values);
                 const max = Math.max(...values);
                 
-                // Update text
                 $('#last-val').text(last.toFixed(2) + ' m');
                 $('#min-val').text(min.toFixed(2) + ' m');
                 $('#max-val').text(max.toFixed(2) + ' m');
                 
-                // Percent & Visual
                 let p = (last / maxDepth) * 100;
-                let cleanP = Math.min(100, Math.max(0, p.toFixed(1)));
-                $('#water-level').css('height', cleanP + '%');
-                $('#percent-val').text(cleanP + '%');
-
-                // Trend logic
-                const diff = last - prev;
-                if (diff > 0.01) $('#trend-badge').text('📈 Stoupá').css('color', 'var(--success)');
-                else if (diff < -0.01) $('#trend-badge').text('📉 Klesá').css('color', 'var(--danger)');
-                else $('#trend-badge').text('Stable').css('color', 'var(--primary)');
+                $('#water-level').css('height', Math.min(100, Math.max(0, p)) + '%');
 
                 // Offline check
                 let lastTime = points[points.length - 1][0];
-                if (new Date().getTime() - lastTime > 86400000) $('#offline-alert').fadeIn();
-                else $('#offline-alert').fadeOut();
+                if (new Date().getTime() - lastTime > 86400000) $('#offline-alert').slideDown();
+                else $('#offline-alert').slideUp();
 
-                $('#update-time').text('Aktualizováno: ' + new Date(lastTime).toLocaleTimeString('cs-CZ'));
+                $('#update-time').text('Poslední data: ' + new Date(lastTime).toLocaleString('cs-CZ'));
             }
         });
     }
@@ -291,7 +261,8 @@
     $(document).ready(function() {
         initChart();
         updateView(1, 'raw');
-        setInterval(() => updateView(1, 'raw'), 300000); 
+        // Redraw chart when window resizes for perfect fit
+        $(window).resize(function() { chart.reflow(); });
     });
 </script>
 
